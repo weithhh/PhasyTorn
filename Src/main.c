@@ -1,4 +1,4 @@
-#include <cmath>
+#include <math.h>
 #include <stdio.h>
 
 #include "stm32f30x.h"
@@ -7,13 +7,23 @@
 #include "stm32f30x_tim.h"
 #include "stm32f30x_dac.h"
 #include "stm32f30x_dma.h"
+#include "stm32f30x_adc.h"
+
 
 #define DAC_DHR12R1_OFFSET 0x08
 
-const uint16_t SAMPLES_COUNT = 255;
-uint16_t sine_table[SAMPLES_COUNT];
+volatile uint32_t systick_delay = 0;
+static uint16_t adc_value = 0;
 
-void fill_dac_sine_table(uint16_t *table, const uint16_t samples_count, const uint16_t max_value, const uint16_t min_value = 0) {
+#define SAMPLES_COUNT 255
+static uint16_t sine_table[SAMPLES_COUNT];
+
+void sleep(uint32_t usec) {
+	systick_delay = usec;
+	while (systick_delay != 0);
+}
+
+void fill_dac_sine_table(uint16_t *table, const uint16_t samples_count, const uint16_t max_value, const uint16_t min_value) {
 	float step = 2 * M_PI / samples_count;
 	int range = (max_value - min_value) / 2.f;
 
@@ -116,13 +126,75 @@ void setup_sine_generator(const uint16_t *table, const uint16_t samples_count, c
 	TIM_Cmd(TIM2, ENABLE);
 }
 
+void setup_adc() {
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+
+	GPIO_InitTypeDef gpio_init;
+	gpio_init.GPIO_Pin = GPIO_Pin_1;
+	gpio_init.GPIO_Mode = GPIO_Mode_AN;
+	gpio_init.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOA, &gpio_init);
+
+
+	RCC_ADCCLKConfig(RCC_ADC12PLLCLK_Div1);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_ADC12, ENABLE);
+
+	ADC_VoltageRegulatorCmd(ADC1, ENABLE);
+	sleep(10);
+
+	ADC_SelectCalibrationMode(ADC1, ADC_CalibrationMode_Single);
+	ADC_StartCalibration(ADC1);
+	while (ADC_GetCalibrationStatus(ADC1) != RESET);
+
+	ADC_CommonInitTypeDef adc_common_init;
+	ADC_CommonStructInit(&adc_common_init);
+	adc_common_init.ADC_Mode = ADC_Mode_Independent;
+	adc_common_init.ADC_Clock = ADC_Clock_AsynClkMode;
+	adc_common_init.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+	adc_common_init.ADC_DMAMode = ADC_DMAMode_OneShot;
+	adc_common_init.ADC_TwoSamplingDelay = 0;
+	ADC_CommonInit(ADC1, &adc_common_init);
+
+	ADC_InitTypeDef adc_init;
+	ADC_StructInit(&adc_init);
+	adc_init.ADC_ContinuousConvMode = ADC_ContinuousConvMode_Enable;
+	adc_init.ADC_Resolution = ADC_Resolution_12b;
+	adc_init.ADC_ExternalTrigConvEvent = ADC_ExternalTrigConvEvent_0;
+	adc_init.ADC_ExternalTrigEventEdge = ADC_ExternalTrigEventEdge_None;
+	adc_init.ADC_DataAlign = ADC_DataAlign_Right;
+	adc_init.ADC_OverrunMode = ADC_OverrunMode_Disable;
+	adc_init.ADC_AutoInjMode = ADC_AutoInjec_Disable;
+	adc_init.ADC_NbrOfRegChannel = 1;
+	ADC_Init(ADC1, &adc_init);
+
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 1, ADC_SampleTime_7Cycles5);
+	ADC_Cmd(ADC1, ENABLE);
+	while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_RDY));
+
+	ADC_StartConversion(ADC1);
+}
+
+
 int main(void) {
 	setup_indicator_led();
 
-	fill_dac_sine_table(sine_table, SAMPLES_COUNT, 2047);
+	fill_dac_sine_table(sine_table, SAMPLES_COUNT, 4095, 0);
 	setup_sine_generator((uint16_t*)&sine_table, SAMPLES_COUNT, 10000);
 
-	while (true) {}
+	// Configure systick interrupts with 1 usec resolution
+	if (SysTick_Config(SystemCoreClock / 1000000)) while (1);
+
+	setup_adc();
+
+	while (1) {
+		while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
+		adc_value = ADC_GetConversionValue(ADC1);
+		sleep(100);
+	}
+}
+
+void SysTick_Handler(void) {
+	systick_delay--;
 }
 
 #ifdef USE_FULL_ASSERT
