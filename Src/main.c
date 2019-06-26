@@ -11,6 +11,9 @@
 #include "stm32f30x_usart.h"
 #include "stm32f30x_opamp.h"
 
+#include "indication/led.h"
+#include "utils.h"
+
 
 #define TX_SAMPLES_COUNT 256
 #define RX_SAMPLES_COUNT 1024
@@ -21,12 +24,6 @@ static uint16_t tx_sine_table[TX_SAMPLES_COUNT];
 static uint16_t rx_circular_buffer[RX_SAMPLES_COUNT];
 
 
-volatile uint32_t systick_delay = 0;
-void sleep(uint32_t usec) {
-	systick_delay = usec;
-	while (systick_delay != 0);
-}
-
 void fill_dac_sine_table(uint16_t *table, const uint16_t samples_count, const uint16_t max_value, const uint16_t min_value) {
 	float step = 2 * M_PI / samples_count;
 	int range = (max_value - min_value) / 2.f;
@@ -35,39 +32,6 @@ void fill_dac_sine_table(uint16_t *table, const uint16_t samples_count, const ui
 		float y = sin(i * step) + 1;
 		table[i] = round(y * range + min_value);
 	}
-}
-
-void setup_indicator_led() {
-	GPIO_InitTypeDef gpio_init;
-	gpio_init.GPIO_Pin = GPIO_Pin_9;
-	gpio_init.GPIO_Mode = GPIO_Mode_AF;
-	gpio_init.GPIO_Speed = GPIO_Speed_10MHz;
-	gpio_init.GPIO_OType = GPIO_OType_PP;
-	gpio_init.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOE, &gpio_init);
-	GPIO_PinAFConfig(GPIOE, GPIO_PinSource9, GPIO_AF_2);
-
-	TIM_TimeBaseInitTypeDef tim_base_init;
-	tim_base_init.TIM_Prescaler = 0;
-	tim_base_init.TIM_CounterMode = TIM_CounterMode_Up;
-	tim_base_init.TIM_Period = SystemCoreClock / 10000 - 1;
-	tim_base_init.TIM_ClockDivision = 0;
-	tim_base_init.TIM_RepetitionCounter = 0;
-	TIM_TimeBaseInit(TIM1, &tim_base_init);
-
-	TIM_OCInitTypeDef tim_oc_init;
-	tim_oc_init.TIM_OCMode = TIM_OCMode_PWM2;
-	tim_oc_init.TIM_OutputState = TIM_OutputState_Enable;
-	tim_oc_init.TIM_OutputNState = TIM_OutputNState_Disable;
-	tim_oc_init.TIM_Pulse = 100 * (tim_base_init.TIM_Period - 1) / 1000;
-	tim_oc_init.TIM_OCPolarity = TIM_OCPolarity_Low;
-	tim_oc_init.TIM_OCNPolarity = TIM_OCNPolarity_High;
-	tim_oc_init.TIM_OCIdleState = TIM_OCIdleState_Set;
-	tim_oc_init.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
-	TIM_OC1Init(TIM1, &tim_oc_init);
-
-	TIM_Cmd(TIM1, ENABLE);
-	TIM_CtrlPWMOutputs(TIM1, ENABLE);
 }
 
 void setup_sine_generator(const uint16_t *table, const uint16_t samples_count, const uint32_t freq) {
@@ -249,13 +213,11 @@ int main(void) {
 
 	// Main
 
-	setup_indicator_led();
+	utils_hw_init();
+	indication_led_hw_init();
 
 	fill_dac_sine_table(tx_sine_table, TX_SAMPLES_COUNT, 4095, 0);
 	setup_sine_generator((uint16_t*)&tx_sine_table, TX_SAMPLES_COUNT, FREQ_HZ);
-
-	// Configure systick interrupts with 1 usec resolution
-	if (SysTick_Config(SystemCoreClock / 1000000)) while (1);
 
 	setup_adc((uint16_t*)&rx_circular_buffer, RX_SAMPLES_COUNT, RX_CLOCK_DIVIDER, FREQ_HZ);
 	setup_uart();
@@ -290,12 +252,5 @@ int main(void) {
 	}
 }
 
-void SysTick_Handler(void) {
-	systick_delay--;
-}
 
-#ifdef USE_FULL_ASSERT
-void assert_failed(uint8_t* file, uint32_t line) {
-	while (1);
-}
-#endif
+
