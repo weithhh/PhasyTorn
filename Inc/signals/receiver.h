@@ -5,5 +5,7 @@
 
 
 void signals_receiver_hw_init(uint16_t *circular_buffer, uint16_t samples, uint16_t clock_prescaler, uint32_t freq);
+void signals_receiver_start();
+void signals_receiver_stop();
 
 #endif /* SIGNALS_RECEIVER_H_ */

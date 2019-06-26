@@ -5,6 +5,7 @@
 
 
 void debug_serial_hw_init() {
+#ifdef DEBUG
 	GPIO_InitTypeDef gpio_init;
 	gpio_init.GPIO_Pin = GPIO_Pin_4;
 	gpio_init.GPIO_Mode = GPIO_Mode_AF;
@@ -23,11 +24,14 @@ void debug_serial_hw_init() {
 	usart_init.USART_Mode = USART_Mode_Tx;
 	USART_Init(USART1, &usart_init);
 	USART_Cmd(USART1, ENABLE);
+#endif
 }
 
 void debug_serial_send_halfword(uint16_t halfword) {
+#ifdef DEBUG
 	while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
 	USART_SendData(USART1, (uint8_t)(halfword >> 8));
 	while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
 	USART_SendData(USART1, (uint8_t)halfword);
+#endif
 }

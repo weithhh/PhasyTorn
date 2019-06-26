@@ -79,7 +79,6 @@ void signals_receiver_hw_init(uint16_t *circular_buffer, uint16_t samples, uint1
 
 	while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_RDY));
 	DMA_Cmd(DMA1_Channel1, ENABLE);
-	ADC_StartConversion(ADC1);
 
 
 	TIM_TimeBaseInitTypeDef tim_base_init;
@@ -92,4 +91,12 @@ void signals_receiver_hw_init(uint16_t *circular_buffer, uint16_t samples, uint1
 	TIM_SelectInputTrigger(TIM8, TIM_TS_ITR1); // From
 	TIM_SelectSlaveMode(TIM8, TIM_SlaveMode_Trigger);
 	TIM_SelectOutputTrigger(TIM8, TIM_TRGOSource_Update);
+}
+
+void signals_receiver_start() {
+	ADC_StartConversion(ADC1);
+}
+
+void signals_receiver_stop() {
+	ADC_StopConversion(ADC1);
 }

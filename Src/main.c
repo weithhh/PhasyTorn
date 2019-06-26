@@ -3,6 +3,7 @@
 #include "indication/led.h"
 #include "signals/generator.h"
 #include "signals/receiver.h"
+#include "signals/dsp.h"
 #include "debug/serial.h"
 #include "utils.h"
 
@@ -45,18 +46,15 @@ int main(void) {
 	debug_serial_hw_init();
 
 	while (1) {
-		ADC_StopConversion(ADC1);
-		uint16_t high = rx_circular_buffer[0];
-		uint16_t low = rx_circular_buffer[0];
-
-		for (uint16_t i = 0; i < RX_SAMPLES_COUNT; i++) {
-			if (rx_circular_buffer[i] > high) high = rx_circular_buffer[i];
-			if (rx_circular_buffer[i] < low) low = rx_circular_buffer[i];
-		}
-		ADC_StartConversion(ADC1);
-
-		debug_serial_send_halfword(high - low);
+		signals_receiver_start();
 		sleep(1000000.f / FREQ_HZ * RX_SINE_PERIODS + 100);
+		signals_receiver_stop();
+
+		uint16_t pk2pk = signals_dsp_pk2pk_measure(rx_circular_buffer, RX_SAMPLES_COUNT);
+		debug_serial_send_halfword(pk2pk);
+
+		uint16_t pk2pk_avg = signals_dsp_pk2pk_average(pk2pk);
+		debug_serial_send_halfword(pk2pk_avg);
 	}
 }
 
