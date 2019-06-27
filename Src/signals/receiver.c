@@ -11,14 +11,14 @@
 
 void signals_receiver_hw_init(uint16_t *circular_buffer, uint16_t samples, uint16_t clock_prescaler, uint32_t freq) {
 	GPIO_InitTypeDef gpio_init;
-	gpio_init.GPIO_Pin = GPIO_Pin_1;
+	gpio_init.GPIO_Pin = GPIO_Pin_7;
 	gpio_init.GPIO_Mode = GPIO_Mode_AN;
 	gpio_init.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOA, &gpio_init);
 
 
 	OPAMP_InitTypeDef opamp_init;
-	opamp_init.OPAMP_NonInvertingInput = OPAMP_NonInvertingInput_IO4;
+	opamp_init.OPAMP_NonInvertingInput = OPAMP_NonInvertingInput_IO1;
 	opamp_init.OPAMP_InvertingInput = OPAMP_InvertingInput_PGA;
 	OPAMP_Init(OPAMP_Selection_OPAMP1, &opamp_init);
 

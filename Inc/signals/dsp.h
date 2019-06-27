@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define PK2PK_AVERAGING_WINDOW 128 // Samples
+#define SIGNALS_DSP_PK2PK_AVERAGING_WINDOW 128 // Samples
 
 
 uint16_t signals_dsp_pk2pk_measure(uint16_t *values, uint16_t length);
