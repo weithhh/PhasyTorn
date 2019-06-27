@@ -6,6 +6,7 @@
 #include "stm32f30x_exti.h"
 
 #include "indication/led.h"
+#include "indication/audio.h"
 
 
 static uint16_t pk2pk_base_value = 0;
@@ -16,6 +17,7 @@ const uint16_t pk2pk_max_deviation = 100;
 
 void indication_controller_hw_init() {
 	indication_led_hw_init();
+	indication_audio_hw_init();
 
 	GPIO_InitTypeDef gpio_init;
 	gpio_init.GPIO_Pin = GPIO_Pin_0;
@@ -42,8 +44,10 @@ uint16_t indication_controller_pk2pk_update(uint16_t value) {
 	if (deviation_minus_dead_zone > 0) {
 		uint8_t percentage = (float)deviation_minus_dead_zone / pk2pk_max_deviation * 100;
 		indication_led_set_brightness(percentage);
+		indication_audio_set_frequency(percentage);
 	} else {
 		indication_led_set_brightness(0);
+		indication_audio_set_frequency(0);
 	}
 
 	pk2pk_last_value = value;
