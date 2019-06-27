@@ -1,14 +1,14 @@
 #include "stm32f30x_rcc.h"
 
-#include "indication/led.h"
 #include "signals/generator.h"
 #include "signals/receiver.h"
 #include "signals/dsp.h"
+#include "indication/controller.h"
 #include "debug/serial.h"
 #include "utils.h"
 
 #define TX_SAMPLES_COUNT 256
-#define RX_SINE_PERIODS 2
+#define RX_SINE_PERIODS 1
 #define RX_SAMPLES_COUNT TX_SAMPLES_COUNT * RX_SINE_PERIODS
 #define RX_CLOCK_DIVIDER 2 * RX_SINE_PERIODS
 #define FREQ_HZ 5000
@@ -40,7 +40,7 @@ void rcc_hw_init() {
 int main(void) {
 	rcc_hw_init();
 	utils_hw_init();
-	indication_led_hw_init();
+	indication_controller_hw_init();
 	signals_generator_hw_init((uint16_t*)&tx_sine_table, TX_SAMPLES_COUNT, FREQ_HZ);
 	signals_receiver_hw_init((uint16_t*)&rx_circular_buffer, RX_SAMPLES_COUNT, RX_CLOCK_DIVIDER, FREQ_HZ);
 	debug_serial_hw_init();
@@ -51,10 +51,9 @@ int main(void) {
 		signals_receiver_stop();
 
 		uint16_t pk2pk = signals_dsp_pk2pk_measure(rx_circular_buffer, RX_SAMPLES_COUNT);
-		debug_serial_send_halfword(pk2pk);
-
 		uint16_t pk2pk_avg = signals_dsp_pk2pk_average(pk2pk);
-		debug_serial_send_halfword(pk2pk_avg);
+		uint16_t deviation = indication_controller_pk2pk_update(pk2pk_avg);
+		debug_serial_send_halfword(deviation);
 	}
 }
 

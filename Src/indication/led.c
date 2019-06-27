@@ -36,3 +36,8 @@ void indication_led_hw_init() {
 	TIM_Cmd(TIM1, ENABLE);
 	TIM_CtrlPWMOutputs(TIM1, ENABLE);
 }
+
+void indication_led_set_brightness(uint8_t percentage) {
+	if (percentage > 100) percentage = 100;
+	TIM1->CCR1 = TIM1->ARR / 100.f * percentage;
+}

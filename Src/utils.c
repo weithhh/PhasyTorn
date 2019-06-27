@@ -12,7 +12,7 @@ void utils_hw_init() {
 
 void sleep(uint32_t usec) {
 	systick_delay = usec;
-	while (systick_delay != 0);
+	while (systick_delay != 0 && systick_delay < usec);
 }
 
 
