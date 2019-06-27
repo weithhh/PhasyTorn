@@ -37,9 +37,17 @@ void indication_audio_hw_init() {
 }
 
 void indication_audio_set_frequency(uint8_t percentage) {
+	if (percentage == 0) {
+		TIM_Cmd(TIM3, DISABLE);
+		return;
+	}
+
 	if (percentage > 100) percentage = 100;
+
 	float freq = ((percentage * (INDICATION_AUDIO_FREQ_MAX - INDICATION_AUDIO_FREQ_MIN) / 100)) + INDICATION_AUDIO_FREQ_MIN;
 	uint16_t auto_reload_value = SystemCoreClock / freq;
 	TIM_SetAutoreload(TIM3, auto_reload_value);
 	TIM3->CCR3 = auto_reload_value / 2;  // Roughly 50% duty
+
+	TIM_Cmd(TIM3, ENABLE);
 }
