@@ -12,14 +12,14 @@ void utils_hw_init() {
 
 void sleep(uint32_t usec) {
 	systick_delay = usec;
-	while (systick_delay != 0 && systick_delay < usec);
+	while (systick_delay != 0);
 }
 
 
 /* IRQ Handlers */
 
 void SysTick_Handler(void) {
-	systick_delay--;
+	if (systick_delay) systick_delay--;
 }
 
 /* IRQ Handlers */
